@@ -1,265 +1,208 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة صدارة نادي الكتاب 📖🏆</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Font - IBM Plex Sans Arabic -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'IBM Plex Sans Arabic', sans-serif;
-            background: #f3f4f6;
-        }
-        .leaderboard-container {
-            max-width: 900px;
-        }
-        .user-id-text {
-            word-break: break-all;
-        }
-        .leaderboard-list::-webkit-scrollbar {
-            width: 8px;
-        }
-        .leaderboard-list::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        .leaderboard-list::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
-        .leaderboard-list::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-        .loading-spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 4px solid white;
-            width: 24px;
-            height: 24px;
-            -webkit-animation: spin 1s linear infinite;
-            animation: spin 1s linear infinite;
-        }
-        @-webkit-keyframes spin {
-            0% { -webkit-transform: rotate(0deg); }
-            100% { -webkit-transform: rotate(360deg); }
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة متصدري نادي القراءة</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <div class="leaderboard-container w-full bg-white rounded-3xl shadow-xl p-8 md:p-10 border border-gray-200">
-        <div class="text-center">
-            <h1 class="text-4xl md:text-5xl font-extrabold text-blue-800 mb-2">لوحة صدارة نادي الكتاب 📖🏆</h1>
-            <p class="text-lg md:text-xl text-gray-600">شاركوا وانزلوا الكتب اللي قريتوها! </p>
-        </div>
+    // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-        <div class="mt-8 p-6 bg-yellow-50 rounded-2xl border border-yellow-200 shadow-inner">
-            <h2 class="text-2xl font-bold text-gray-700 mb-4">سجل كتاب جديد 📚</h2>
-            <div class="flex flex-col md:flex-row gap-4 items-center">
-                <input type="text" id="usernameInput" placeholder="اكتب اسمك هنا" class="flex-1 w-full p-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" autocomplete="off">
-                <button id="logBookBtn" onclick="logBook()" class="w-full md:w-auto p-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center gap-2">
-                    <span>سجل كتاب 🚀</span>
-                </button>
-            </div>
-            <p id="message" class="mt-4 text-center font-bold"></p>
-        </div>
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBnxRWZ25gjskld4JQthZInxCUNeFGHNes",
+  authDomain: "book-club-6c164.firebaseapp.com",
+  projectId: "book-club-6c164",
+  storageBucket: "book-club-6c164.firebasestorage.app",
+  messagingSenderId: "903267722786",
+  appId: "1:903267722786:web:ab556bff593722d56e0c7b",
+  measurementId: "G-H4CS2ZDN1L"
+};
 
-        <div class="mt-8 p-6 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner">
-            <h2 class="text-2xl font-bold text-gray-700 mb-4">احصائياتك الشخصية</h2>
-            <p class="text-md text-gray-500 mb-2">اسمك: <span id="myUsername" class="font-semibold text-gray-800">...</span></p>
-            <p class="text-md text-gray-500 mb-4">عدد الكتب المكتملة: <span id="myBooksCompleted" class="font-extrabold text-lg text-blue-600">0</span></p>
-            <p class="text-sm text-gray-500 mb-2">معرفك الخاص (شاركه وي أصدقائك):</p>
-            <div id="userIdDisplay" class="bg-gray-200 p-3 rounded-xl user-id-text text-gray-800 font-mono text-sm break-all">... جاري التحميل ...</div>
-        </div>
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+    
+    // Initialize Firebase and Firestore
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-        <div class="mt-8">
-            <h2 class="text-2xl font-bold text-gray-700 mb-4">لوحة الصدارة</h2>
-            <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                <ul id="leaderboardList" class="divide-y divide-gray-200 max-h-96 overflow-y-auto leaderboard-list">
-                    <li class="p-6 text-center text-gray-500">جاري تحميل البيانات...</li>
-                </ul>
-            </div>
-        </div>
-    </div>
+    // Global variables for user and UI elements
+    let currentUser = null;
+    let unsubscribeLeaderboard = null;
+    
+    // UI elements
+    const userIdDisplay = document.getElementById('userIdDisplay');
+    const nameInput = document.getElementById('nameInput');
+    const progressInput = document.getElementById('progressInput');
+    const saveButton = document.getElementById('saveButton');
+    const leaderboardList = document.getElementById('leaderboardList');
+    const noUsersMessage = document.getElementById('noUsersMessage');
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, collection, setDoc, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    // Authentication and data setup
+    async function setupApp() {
+      try {
+        await signInAnonymously(auth);
+        currentUser = auth.currentUser;
+        userIdDisplay.textContent = currentUser.uid;
+        
+        // Disable save button while loading
+        saveButton.disabled = false;
+        
+        // Start listening to the leaderboard
+        startLeaderboardListener();
+      } catch (error) {
+        console.error("Firebase Auth Error: ", error);
+        // Fallback or error message on UI
+        userIdDisplay.textContent = 'خطأ في تسجيل الدخول';
+      }
+    }
 
-        // Enable Firebase debug logging
-        setLogLevel('debug');
-
-        // Global variables provided by the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        let app;
-        let db;
-        let auth;
-        let userId;
-        let username;
-
-        const usernameInput = document.getElementById('usernameInput');
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const leaderboardList = document.getElementById('leaderboardList');
-        const messageEl = document.getElementById('message');
-        const logBookBtn = document.getElementById('logBookBtn');
-        const myUsernameEl = document.getElementById('myUsername');
-        const myBooksCompletedEl = document.getElementById('myBooksCompleted');
-
-        function showMessage(msg, isError = false) {
-            messageEl.textContent = msg;
-            messageEl.className = `mt-4 text-center font-bold ${isError ? 'text-red-500' : 'text-green-600'} block`;
-            setTimeout(() => {
-                messageEl.textContent = '';
-                messageEl.className = `mt-4 text-center font-bold hidden`;
-            }, 3000);
-        }
-
-        // Initialize Firebase on window load
-        window.onload = async () => {
-            try {
-                if (Object.keys(firebaseConfig).length > 0) {
-                    app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                    
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } else {
-                    showMessage('خطأ: معلومات Firebase غير متوفرة.', true);
-                }
-            } catch (error) {
-                console.error("خطأ في تهيئة Firebase:", error);
-                showMessage('خطأ في تهيئة Firebase. تأكد من إعداداتك.', true);
-            }
-        };
-
-        // Listen for authentication state changes
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                userId = user.uid;
-                userIdDisplay.textContent = userId;
-
-                // Set up the real-time Firestore listener
-                const leaderboardCollection = collection(db, `artifacts/${appId}/public/data/leaderboard`);
-                onSnapshot(leaderboardCollection, (snapshot) => {
-                    const members = [];
-                    let myData = null;
-                    snapshot.forEach((doc) => {
-                        const data = doc.data();
-                        members.push(data);
-                        if (data.userId === userId) {
-                            myData = data;
-                        }
-                    });
-
-                    // Update my stats section
-                    if (myData) {
-                        username = myData.username;
-                        myUsernameEl.textContent = username;
-                        myBooksCompletedEl.textContent = myData.booksCompleted;
-                        usernameInput.value = username; // Pre-fill username for convenience
-                    } else {
-                        myUsernameEl.textContent = '...';
-                        myBooksCompletedEl.textContent = '0';
-                    }
-
-                    // Sort members: by books completed (desc)
-                    members.sort((a, b) => b.booksCompleted - a.booksCompleted);
-
-                    renderLeaderboard(members);
-                }, (error) => {
-                    console.error("خطأ في جلب لوحة الصدارة:", error);
-                    showMessage('خطأ في جلب البيانات من لوحة الصدارة.', true);
-                });
-            } else {
-                userId = null;
-                userIdDisplay.textContent = 'غير مصرح...';
-                myUsernameEl.textContent = '...';
-                myBooksCompletedEl.textContent = '0';
-            }
+    // Function to start the real-time leaderboard listener
+    function startLeaderboardListener() {
+      const leaderboardRef = collection(db, `users`);
+      
+      unsubscribeLeaderboard = onSnapshot(leaderboardRef, (snapshot) => {
+        const users = [];
+        snapshot.forEach(doc => {
+          users.push({ id: doc.id, ...doc.data() });
         });
+        
+        // Sort users by progress in descending order in memory
+        users.sort((a, b) => b.progress - a.progress);
+        
+        displayLeaderboard(users);
+      }, (error) => {
+        console.error("Firestore Error: ", error);
+      });
+    }
 
-        function renderLeaderboard(members) {
-            if (members.length === 0) {
-                leaderboardList.innerHTML = `<li class="p-6 text-center text-gray-500">ماكو أحد باللوحة حالياً. سجل أول كتاب!</li>`;
-                return;
-            }
+    // Function to display the leaderboard data on the page
+    function displayLeaderboard(users) {
+      leaderboardList.innerHTML = ''; // Clear previous list
+      if (users.length === 0) {
+        noUsersMessage.classList.remove('hidden');
+        return;
+      }
+      noUsersMessage.classList.add('hidden');
+      
+      users.forEach((user, index) => {
+        const isCurrentUser = currentUser && user.id === currentUser.uid;
+        const userElement = `
+          <div class="grid grid-cols-3 gap-4 items-center py-3 border-b border-gray-200 last:border-b-0 transition-colors duration-200 ${isCurrentUser ? 'bg-blue-50 rounded-lg p-2' : ''}">
+            <div class="font-bold text-lg text-gray-800">${index + 1}</div>
+            <div class="flex flex-col">
+              <span class="font-medium text-gray-700">${user.name}</span>
+              <span class="text-xs text-gray-400 truncate mt-1 break-all">${user.id}</span>
+            </div>
+            <div class="font-bold text-lg text-right text-blue-600">${user.progress}</div>
+          </div>
+        `;
+        leaderboardList.innerHTML += userElement;
+      });
+    }
 
-            leaderboardList.innerHTML = '';
-            members.forEach((member, index) => {
-                const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📖';
-                const listItem = document.createElement('li');
-                listItem.className = `p-6 flex items-center justify-between transition-all hover:bg-blue-50 cursor-pointer ${member.userId === userId ? 'bg-blue-100 border-l-4 border-blue-500' : (index % 2 === 0 ? 'bg-white' : 'bg-gray-50')}`;
-                
-                listItem.innerHTML = `
-                    <div class="flex items-center gap-4">
-                        <span class="text-3xl font-bold text-gray-800">${index + 1}.</span>
-                        <div class="flex flex-col">
-                            <span class="text-xl font-bold text-gray-800">${member.username}</span>
-                            <span class="text-sm text-gray-500 user-id-text">${member.userId === userId ? 'أنت' : member.userId}</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 text-2xl text-blue-600 font-extrabold">
-                        <span>${member.booksCompleted}</span>
-                        <span>كتب</span>
-                        <span>${rankEmoji}</span>
-                    </div>
-                `;
-                leaderboardList.appendChild(listItem);
-            });
-        }
+    // Function to handle saving user data
+    async function handleSave(event) {
+      event.preventDefault();
+      if (!currentUser) {
+        console.error("User not authenticated.");
+        return;
+      }
+      
+      const name = nameInput.value.trim();
+      const progress = parseInt(progressInput.value, 10);
+      
+      if (!name || isNaN(progress)) {
+        alert("الرجاء إدخال اسمك وعدد الصفحات بشكل صحيح!");
+        return;
+      }
 
-        window.logBook = async () => {
-            const newUsername = usernameInput.value.trim();
-            if (!newUsername) {
-                showMessage('يا بطل، لازم تكتب اسمك أول شي! 😅', true);
-                return;
-            }
-            if (!userId) {
-                showMessage('جاري تسجيل الدخول... انتظر لحظة.', true);
-                return;
-            }
-            
-            logBookBtn.innerHTML = `<span class="loading-spinner"></span>`;
-            
-            const memberRef = doc(db, `artifacts/${appId}/public/data/leaderboard`, userId);
-            try {
-                const docSnapshot = await getDoc(memberRef);
-                const currentBooks = docSnapshot.exists() ? docSnapshot.data().booksCompleted : 0;
-                
-                await setDoc(memberRef, {
-                    userId: userId,
-                    username: newUsername,
-                    booksCompleted: currentBooks + 1,
-                    lastUpdate: new Date().toISOString()
-                }, { merge: true });
-                
-                showMessage(`عاشت ايدك! سجلت كتاب جديد لـ ${newUsername}! 🥳`);
-                
-            } catch (error) {
-                console.error("خطأ في تسجيل الكتاب:", error);
-                showMessage('صار خطأ وما كدرنا نسجل الكتاب. حاول مرة ثانية.', true);
-            } finally {
-                logBookBtn.innerHTML = `<span>سجل كتاب 🚀</span>`;
-            }
-        };
-    </script>
+      const userDocRef = doc(db, `users/${currentUser.uid}`);
+      
+      try {
+        await setDoc(userDocRef, {
+          name: name,
+          progress: progress,
+          lastUpdated: new Date().toISOString()
+        }, { merge: true });
+        
+        console.log('User data saved successfully!');
+      } catch (error) {
+        console.error('Error saving user data:', error);
+      }
+    }
+
+    // Add event listener to the save button
+    window.onload = () => {
+      saveButton.addEventListener('click', handleSave);
+      setupApp();
+    };
+
+  </script>
+  <style>
+    /* Custom styles for a better look on mobile */
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+    body {
+        font-family: 'Tajawal', sans-serif;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-100 p-4 font-sans antialiased flex flex-col items-center">
+  <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-2xl text-center">
+    <h1 class="text-4xl font-bold text-gray-800 mb-2">لوحة متصدري نادي القراءة</h1>
+    <p class="text-gray-500 mb-6">منو راح يوصل لنهاية الكتاب أول؟ 🤔</p>
+    <p class="text-sm text-gray-600 mb-4">
+      أنت حاليًا المستخدم: <span id="userIdDisplay" class="font-mono bg-gray-200 px-2 py-1 rounded-md text-gray-800 break-all">جارِ التحميل...</span>
+    </p>
+
+    <!-- User Input Form -->
+    <form class="flex flex-col md:flex-row items-center justify-center gap-4 mb-8" onsubmit="handleSave()">
+      <input
+        id="nameInput"
+        type="text"
+        placeholder="اكتب اسمك"
+        class="w-full p-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+      />
+      <input
+        id="progressInput"
+        type="number"
+        placeholder="عدد الصفحات"
+        class="w-full p-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+      />
+      <button
+        id="saveButton"
+        type="submit"
+        disabled
+        class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white p-3 rounded-lg shadow-md hover:from-blue-600 hover:to-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+      >
+        تحديث التقدم
+      </button>
+    </form>
+
+    <!-- Leaderboard Table -->
+    <div class="w-full text-left">
+      <div class="grid grid-cols-3 gap-4 font-bold text-gray-700 border-b-2 border-gray-300 pb-2 mb-4">
+        <div>المرتبة</div>
+        <div>الاسم</div>
+        <div class="text-right">عدد الصفحات</div>
+      </div>
+      <p id="noUsersMessage" class="text-gray-500 text-center py-4 hidden">لا يوجد أي مشارك حتى الآن. كن أول من ينضم!</p>
+      <div id="leaderboardList">
+        <!-- Leaderboard items will be rendered here by JavaScript -->
+      </div>
+    </div>
+  </div>
 </body>
 </html>
